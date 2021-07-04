@@ -1,0 +1,105 @@
+from random import shuffle, randrange
+
+
+class Maze():
+    def __init__(self, spawn_x=0, spawn_y=0, k_x=0, k_y=0,exit_x=0, exit_y=0, width=3, height=3, mobs=[], maze=[] ):
+        self.sp_x = spawn_x
+        self.sp_y = spawn_y
+        self.key_x = k_x
+        self.key_y = k_y
+        self.mobs = mobs
+        self.width = width
+        self.height = height
+        self.maze = maze
+        self.ex_x = exit_x
+        self.ex_y = exit_y
+
+
+def generation(width, height):
+    maze = Maze()
+    maze.width = width
+    maze.height = height
+    maze.sp_x = randrange(1, maze.width)
+    maze.sp_y = randrange(1, maze.height)
+    maze.mobs = []
+
+    vis = [[0] * maze.width + [1] for _ in range(maze.height)] + [[1] * (maze.width + 1)]
+    ver = [["| "] * maze.width + ['| '] for _ in range(maze.height)] + [[]]
+    hor = [["+-"] * maze.width + ['+ '] for _ in range(maze.height + 1)]
+
+    def walk(x, y):
+        vis[y][x] = 1
+        d = [(x - 1, y), (x, y + 1), (x + 1, y), (x, y - 1)]
+        shuffle(d)
+        for (xx, yy) in d:
+            if vis[yy][xx]: continue
+            m = randrange(1, maze.width * maze.height)
+            if m < (maze.width * maze.height / 10):
+                if xx == x:
+                    hor[max(y, yy)][x] = "+ "
+                    if x == 0:
+                        ver[yy][x] = "|m"
+                    else:
+                        ver[yy][x] = " m"
+                if yy == y:
+                    if xx == x + 1: ver[y][xx] = " m"
+                    if xx == x - 1:
+                        ver[y][xx] = "|m"
+                        ver[y][x] = "  "
+
+                maze.mobs.append((xx + 1, yy + 1))
+                vis[yy][xx] = 1
+                continue
+            if xx == x: hor[max(y, yy)][x] = "+ "
+            if yy == y: ver[y][max(x, xx)] = "  "
+            walk(xx, yy)
+
+    walk(maze.sp_x - 1, maze.sp_y - 1)
+
+    # Добавление выхода
+    ex = False
+    while not ex:
+        exit = randrange(1, 4)
+        # exit = 4
+        if exit == 1:
+            x = randrange(1, maze.width)
+            y = maze.height + 1
+            if ver[y - 2][x - 1] != " m" and ver[y - 2][x - 1] != "|m":
+                ex = True
+                hor[y - 1][x - 1] = "  "
+        elif exit == 2:
+            x = maze.width + 1
+            y = randrange(1, maze.height)
+            if ver[y - 1][x - 2] != " m" and ver[y - 1][x - 2] != "|m":
+                ex = True
+                ver[y - 1][x - 1] = "  "
+        elif exit == 3:
+            x = randrange(1, maze.width)
+            y = 0
+            if ver[y][x - 1] != " m" and ver[y][x - 1] != "|m":
+                ex = True
+                hor[y][x - 1] = "  "
+        elif exit == 4:
+            x = 0
+            y = randrange(1, maze.height)
+            if ver[y - 1][x + 1] != " m" and ver[y - 1][x + 1] != "|m":
+                ex = True
+                ver[y - 1][x] = "  "
+        else:
+            print("Скоро рассвет...")
+        maze.ex_x = x
+        maze.ex_y = y
+    s = ""
+    for (a, b) in zip(hor, ver):
+        s += ''.join(a + ['\n'] + b + ['\n'])
+        maze.maze = s.split('\n')[:-2]
+
+
+    key = False
+    while not key:
+        maze.key_x = randrange(1, maze.width)
+        maze.key_y = randrange(1, maze.height)
+        if maze.mobs.count((maze.key_x, maze.key_y)) == 0 and (maze.key_x != maze.sp_x and maze.key_y != maze.sp_y):
+            key = True
+
+    return maze
