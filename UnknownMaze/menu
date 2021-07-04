@@ -1,0 +1,105 @@
+from cocos.director import director
+from cocos.scene import Scene
+from cocos.layer import ColorLayer
+from pyglet.window import key as keys
+from cocos.actions import *
+from cocos.text import Label
+from cocos.scenes import transitions
+from cocos.menu import *
+import pyglet.app
+
+from game import main_s
+from generation import generation
+
+
+class MainMenu(Menu):
+    def __init__(self):
+        super(MainMenu, self).__init__('Unknown maze')
+        self.font_title['font_name'] = 'Kristen ITC'
+        self.font_title['font_size'] = 60
+        self.font_title['bold'] = True
+        self.font_title['color'] = (145, 9, 180, 255)
+        self.font_item['font_name'] = 'Kristen ITC'
+        self.font_item_selected['font_name'] = 'Kristen ITC'
+        self.font_item['color'] = (9, 54, 154, 255)
+        self.font_item_selected['color'] = (9, 54, 154, 255)
+
+        self.menu_anchor_y = 'center'
+        self.menu_anchor_x = 'center'
+        self.width = ['3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
+        self.height = ['3', '4', '5', '6', '7', '8']
+
+        items = list()
+        items.append(MenuItem('New Game', self.on_new_game))
+        items.append(MultipleMenuItem('Width:', self.set_width, self.width))
+        items.append(MultipleMenuItem('Height:', self.set_height, self.height))
+        items.append(MenuItem('Rules', self.open_rules))
+        items.append(MenuItem('Quit', pyglet.app.exit))
+        self.create_menu(items, ScaleTo(1.25, duration=0.25), ScaleTo(1.0, duration=0.25))
+
+    def on_new_game(self):
+
+        for i in main_s.obj: main_s.main_layer.remove(i)
+        main_s.obj.clear()
+        main_s.main_layer.color =(185,232,247)
+        director.push(transitions.TransitionScene(main_s.main_scene, duration=2))
+        for i in main_s.obj2: main_s.inv_layer.remove(i)
+        main_s.obj2.clear()
+
+        main_s.visible.clear()
+        main_s.maze = generation(main_s.width, main_s.height)
+        main_s.player.x = main_s.x0 + 50 * (main_s.maze.sp_x - 0.5)
+        main_s.player.y = main_s.y0 + 50 * (main_s.maze.sp_y - 0.5)
+
+        director.run(main_s.main_scene)
+    def open_rules(self):
+        director.push(transitions.TransitionScene(rules, duration=2))
+    def set_width(self, index):
+        main_s.width = int(self.width[index])
+    def set_height(self, index):
+        main_s.height = int(self.height[index])
+
+
+rules = Scene()
+text = Label(text = 'Rules', font_size = 30,font_name = 'Ink Free', position= (10, 560), color = (9, 54, 154, 255), bold = True)
+text1 = Label(text="You must find the exit from the maze. Also, you should find a key to open the exit door. "
+                  "If you find a key, you will see it in your inventory. In the maze you can meet mobs. If you meet mob,"
+                  " you will die and return to spawn. You can use arrow buttons to move. If you run into the wall while "
+                  "moving, you will see it.",width = 780,font_size = 20,font_name = 'Ink Free', position= (10, 530),
+              multiline = True, color = (9, 54, 154, 255))
+#text1 = Label(text="You must find the exit from the maze.", font_size = 15,font_name = 'Ink Free',position= (10, 530))
+#text2 = Label(text="Also, you should find a key to open the exit door.", font_size = 15, font_name = 'Ink Free',position= (10, 500))
+#text3 = Label(text="If you find a key, you will see it in your inventory.",font_size = 15, font_name = 'Ink Free', position= (10, 470))
+#text4 = Label(text="In the maze you can meet mobs. If you meet mob, you will die and return to spawn.", font_size = 15, font_name = 'Ink Free',position= (10, 440))
+#text5 = Label(text="You can use arrow buttons to move.", font_size = 15, font_name = 'Ink Free',position= (10, 410))
+#text6= Label(text="If you run into the wall while moving, you will see it.",font_size = 15, font_name = 'Ink Free', position= (10, 380))
+text2= Label(text="Press Space to exit to main menu.",font_size = 15, font_name = 'Ink Free', position= (10, 100),
+             color = (9, 54, 154, 255), bold=True, italic=True)
+background = ColorLayer(185,232,247, 255)
+background.add(text)
+background.add(text1)
+background.add(text2)
+#background.add(text3)
+#background.add(text4)
+#background.add(text5)
+#background.add(text6)
+#background.add(text7)
+rules.add(background)
+
+keyboard = keys.KeyStateHandler()
+director.window.push_handlers(keyboard)
+
+
+class ControlLayer(Action):
+    def step(self, dt):
+        if keyboard[keys.SPACE]:
+            director.replace(menu)
+
+
+background.do(ControlLayer())
+
+if __name__ == '__main__':
+    menu = Scene()
+    menu.add(MainMenu(), z=1)
+    menu.add(ColorLayer(185,232,247, 255),z=0)
+    director.run(menu)
