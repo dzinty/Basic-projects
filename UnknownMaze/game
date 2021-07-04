@@ -1,0 +1,228 @@
+from cocos.director import director
+from cocos.scene import Scene
+from cocos.sprite import Sprite
+from cocos.layer import ColorLayer
+from pyglet.window import key as keys
+from cocos.actions import *
+from cocos.text import Label
+from generation import Maze
+
+director.init(caption='Unknown maze', width=800, height=600, autoscale=False)
+
+class Main():
+    def __init__(self,width = 3, height = 3, x0 = 100, y0 = 130,  scene = None, layer = ColorLayer(0,50,247, 255),
+                visible = [],obj = [], obj2 = [],inv_layer = ColorLayer(0,0,0,0), maze = Maze(),
+                 player=Sprite('Player.png', position=(0,0))):
+        self.main_scene = scene
+        self.main_layer = layer
+        self.visible = visible
+        self.obj = obj
+        self.inv_layer = inv_layer
+        self.obj2 = obj2
+        self.maze = maze
+        self.width = width
+        self.height = height
+        self.player = player
+        self.x0 = x0
+        self.y0 = y0
+
+
+scene = Scene()
+main_s = Main(scene=scene)
+
+main_s.main_scene.add(main_s.main_layer)
+inv = Label(text='Inventory', position=(5,60), font_name = 'Ink Free', color = (0, 0, 0, 255), bold = True)
+main_s.inv_layer = ColorLayer(247,246,240, 255)
+a, b = director.get_window_size()
+main_s.inv_layer.width = a
+main_s.inv_layer.height = 80
+main_s.main_scene.add(main_s.inv_layer)
+main_s.inv_layer.add(inv)
+
+keyboard = keys.KeyStateHandler()
+director.window.push_handlers(keyboard)
+
+
+def draw_maze(maze):
+    wall_col = (9, 54, 154)
+
+    for y in range(-1, len(maze), 2):
+        for x in range(1, len(maze[0]), 2):
+            if maze[y + 1][x] == '-':
+                s = Sprite('wall1.png', position=(main_s.x0 + 50 * ((x+1)/2 - 0.5), main_s.y0 + 50 * (y+1)/2), color=wall_col)
+                main_s.main_layer.add(s)
+                main_s.obj.append(s)
+            if maze[y][x - 1] == '|':
+                s = Sprite('wall2.png', position=(main_s.x0 + 50 * ((x+1)/2 - 1), main_s.y0 + 50 * ((y+1)/2 - 0.5)), color=wall_col)
+                main_s.main_layer.add(s)
+                main_s.obj.append(s)
+
+main_s.player = Sprite('Player.png', position =(main_s.x0 + 50 * (main_s.maze.sp_x - 0.5), main_s.y0 + 50 * (main_s.maze.sp_y - 0.5)))
+main_s.main_layer.add(main_s.player)
+
+
+#Проверка выигрыша
+def win_check(x,y):
+    win = False
+    if x == main_s.maze.ex_x and y == main_s.maze.ex_y:
+        win = True
+    return win
+
+
+def congratulate():
+    print('Congratulations!')
+    draw_maze(main_s.maze.maze)
+    s = Sprite('key.png', position=(main_s.x0 + 50 * (main_s.maze.key_x - 0.5), main_s.y0 + 50 * (main_s.maze.key_y - 0.5)), scale=0.04)
+    main_s.main_layer.add(s)
+    main_s.obj.append(s)
+    for (xx, yy) in main_s.maze.mobs:
+        s = Sprite('slime.png', position=(main_s.x0 + 50 * (xx - 0.5), main_s.y0 + (yy - 0.5) * 50), scale=0.5)
+        main_s.main_layer.add(s)
+        main_s.obj.append(s)
+    cong = Label(text='You Win! Press Esc to go to main menu.', font_size = 20, font_name = 'Ink Free',
+                 position=(200,main_s.y0/3), color = (54, 44, 54, 255), bold = True)
+    main_s.inv_layer.add(cong)
+    main_s.obj2.append(cong)
+    if keyboard[keys.SPACE]:
+        director.pop()
+
+
+def tp():
+    print('Press F to pay respect')
+    main_s.player.x = main_s.x0 + 50 * (main_s.maze.sp_x - 0.5)
+    main_s.player.y = main_s.y0 + 50 * (main_s.maze.sp_y - 0.5)
+    return main_s.maze.sp_x, main_s.maze.sp_y
+
+def mob_check(x,y):
+    death = False
+    for (xx,yy) in main_s.maze.mobs:
+        if x == xx and y == yy:
+            death = True
+            if main_s.visible.count((2*x-1,2*y-1))==0:
+                s = Sprite('slime.png', position=(main_s.x0 + 50 * (x - 0.5), main_s.y0 + (y - 0.5) * 50), scale=0.5)
+                main_s.main_layer.add(s)
+                main_s.obj.append(s)
+                main_s.visible.append((2*x-1,2*y-1))
+    return death
+
+#Движение игрока
+def move(maze, xx, yy):
+    direction = None
+    door_col = (255,0,250)
+    x = 2*xx-1
+    y = 2*yy-1
+    if keyboard[keys.UP] and (maze[y+1][x] != '-'):
+        if xx == main_s.maze.ex_x and yy + 1==main_s.maze.ex_y and\
+                main_s.visible.count((2*main_s.maze.key_x-1, 2*main_s.maze.key_y-1))==0:
+            if main_s.visible.count((x,y+1))==0:
+                s=Sprite('wall1.png', position=(main_s.x0 + 50 * ((x+1)/2 - 0.5), main_s.y0 + 50 * (y+1)/2), color=door_col)
+                main_s.main_layer.add(s)
+                main_s.obj.append(s)
+                main_s.visible.append((x,y+1))
+        else:
+            direction=(0, 50)
+    elif keyboard[keys.DOWN] and (maze[y-1][x] != '-'):
+        if xx == main_s.maze.ex_x and yy - 1 == main_s.maze.ex_y and\
+                main_s.visible.count((2*main_s.maze.key_x-1, 2*main_s.maze.key_y-1))==0:
+            if main_s.visible.count((x, y - 1)) == 0:
+                s = Sprite('wall1.png', position=(main_s.x0 + 50 * ((x + 1) / 2 - 0.5), main_s.y0 + 50 * ((y+1) / 2-1)),
+                                      color=door_col)
+                main_s.main_layer.add(s)
+                main_s.obj.append(s)
+                main_s.visible.append((x, y - 1))
+        else:
+            direction = (0, -50)
+    elif keyboard[keys.RIGHT] and (maze[y][x+1] != '|'):
+        if xx + 1  == main_s.maze.ex_x and yy == main_s.maze.ex_y and\
+                main_s.visible.count((2*main_s.maze.key_x-1, 2*main_s.maze.key_y-1))==0:
+            if main_s.visible.count((x+1, y)) == 0:
+                s = Sprite('wall2.png', position=(main_s.x0 + 50 * ((x + 1) / 2), main_s.y0 + 50 * ((y + 1) / 2- 0.5)),
+                                      color=door_col)
+                main_s.obj.append(s)
+                main_s.main_layer.add(s)
+                main_s.visible.append((x+1, y))
+        else:
+            direction = (50, 0)
+    elif keyboard[keys.LEFT] and (maze[y][x-1] != '|'):
+        if xx - 1 == main_s.maze.ex_x and yy == main_s.maze.ex_y and\
+                main_s.visible.count((2*main_s.maze.key_x-1, 2*main_s.maze.key_y-1))==0:
+            if main_s.visible.count((x - 1, y)) == 0:
+                s = Sprite('wall2.png', position=(main_s.x0 + 50 * ((x + 1) / 2 - 1), main_s.y0 + 50 * ((y + 1) / 2 - 0.5)),
+                           color=door_col)
+                main_s.main_layer.add(s)
+                main_s.obj.append(s)
+                main_s.visible.append((x - 1, y))
+        else:
+            direction = (-50, 0)
+    return direction
+
+main_s.visible = []
+#Отрисовка стен при движении
+def wall_visibility(maze, xx, yy):
+    x = 2 * xx - 1
+    y = 2 * yy - 1
+    wall_col = (9, 54, 154)
+    if keyboard[keys.UP] and maze[y+1][x]=='-' and (main_s.visible.count((x,y+1))==0):
+        s = Sprite('wall1.png', position=(main_s.x0 + 50 * (xx-0.5), main_s.y0 + 50 * yy), color=wall_col)
+        main_s.main_layer.add(s)
+        main_s.obj.append(s)
+        main_s.visible.append((x,y+1))
+    elif keyboard[keys.DOWN] and maze[y-1][x]=='-' and (main_s.visible.count((x,y-1))==0):
+        s = Sprite('wall1.png', position=(main_s.x0 + 50 * (xx - 0.5), main_s.y0 + 50 * (yy-1)), color=wall_col)
+        main_s.main_layer.add(s)
+        main_s.obj.append(s)
+        main_s.visible.append((x,y-1))
+    elif keyboard[keys.RIGHT] and maze[y][x+1]=='|' and (main_s.visible.count((x+1,y))==0):
+        s = Sprite('wall2.png', position=(main_s.x0 + 50 * xx, main_s.y0 + 50 * (yy - 0.5)), color=wall_col)
+        main_s.main_layer.add(s)
+        main_s.obj.append(s)
+        main_s.visible.append((x+1,y))
+    elif keyboard[keys.LEFT] and maze[y][x-1]=='|' and (main_s.visible.count((x-1,y))==0):
+        s = Sprite('wall2.png', position=(main_s.x0 + 50 * (xx-1), main_s.y0 + 50 * (yy - 0.5)), color=wall_col)
+        main_s.main_layer.add(s)
+        main_s.obj.append(s)
+        main_s.visible.append((x-1, y))
+
+
+def key_check(x,y):
+    if main_s.maze.key_x == x and main_s.maze.key_y == y and\
+            main_s.visible.count((2*main_s.maze.key_x-1, 2*main_s.maze.key_y-1))==0:
+        s = Sprite('key.png', position=(25,25), scale=0.04)
+        main_s.inv_layer.add(s)
+        main_s.obj2.append(s)
+        main_s.visible.append((2*main_s.maze.key_x-1, 2*main_s.maze.key_y-1))
+
+
+stop = False
+
+
+class KeyboardController(Action):
+    def step(self, dt):
+        if not main_s.player.are_actions_running():
+            x = int((main_s.player.x + 25 - main_s.x0) / 50)
+            y = int((main_s.player.y + 25 - main_s.y0) / 50)
+
+            win = win_check(x,y)
+
+            if win:
+                congratulate()
+                tp()
+
+            else:
+                key_check(x,y)
+                if mob_check(x, y):
+                    x, y = tp()
+            # tp to spawn
+                if keyboard[keys.F] and (x != main_s.maze.ex_x and y != main_s.maze.ex_y):
+                    x, y = tp()
+
+                wall_visibility(main_s.maze.maze, x, y)
+                direction = move(main_s.maze.maze, x, y)
+                if direction:
+                    main_s.player.do(MoveBy(direction, 0.3))
+
+
+main_s.main_layer.do(KeyboardController())
+
+
+
